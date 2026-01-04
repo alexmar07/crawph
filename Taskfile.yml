@@ -1,0 +1,46 @@
+version: "3"
+
+tasks:
+  install-deps:
+    cmds:
+      - go mod tidy
+
+  default:
+    desc: "Build the app"
+    deps: [install-deps]
+    cmds:
+      - go build -o bin/crawph cmd/main.go
+
+  build-linux:
+    deps: [install-deps]
+    desc: "Build for Linux"
+    cmds:
+      - go build -a -installsuffix cgo -tags "netgo" -installsuffix netgo -o bin/crawph cmd/main.go
+    env:
+      CGO_ENABLED: 0
+      GOOS: linux
+
+  build-docker:
+    desc: "Build a docker image"
+    cmds:
+      - docker build -t crawph -f Dockerfile .
+
+  test:
+    deps:
+      - install-deps
+    desc: "Run tests"
+    cmds:
+      - go test -v ./...
+
+  clean:
+    desc: "Clean up"
+    prompt: This is a dangerous command... Do you want to continue?
+    cmds:
+      - rm -f bin/*
+      - rm -f data/*
+
+  run-docker:
+    desc: "Run the docker image"
+    deps: [build-docker]
+    cmds:
+      - docker run -d -p 8080:8080 crawph
