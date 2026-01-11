@@ -11,23 +11,20 @@ import (
 )
 
 type Crawph struct {
-	maxWorkers        int
-	graph             *graph.Graph
-	queue             *queue.Queue
-	activeWorkers     int
-	activeWorkersMu   sync.RWMutex
-	shouldTerminate   bool
-	shouldTerminateMu sync.RWMutex
-	wg                sync.WaitGroup
+	maxWorkers      int
+	graph           *graph.Graph
+	queue           *queue.Queue
+	activeWorkers   int
+	activeWorkersMu sync.RWMutex
+	wg              sync.WaitGroup
 }
 
 func NewCrawph(maxWorkers int) *Crawph {
 	return &Crawph{
-		maxWorkers:      maxWorkers,
-		graph:           graph.NewGraph(),
-		queue:           queue.NewQueue(),
-		wg:              sync.WaitGroup{},
-		shouldTerminate: false,
+		maxWorkers: maxWorkers,
+		graph:      graph.NewGraph(),
+		queue:      queue.NewQueue(),
+		wg:         sync.WaitGroup{},
 	}
 }
 
@@ -62,27 +59,11 @@ func (c *Crawph) DecreaseActiveWorkers() {
 
 }
 
-func (c *Crawph) SetShouldTerminate(terminate bool) {
-
-	c.shouldTerminateMu.Lock()
-	defer c.shouldTerminateMu.Unlock()
-
-	c.shouldTerminate = terminate
-}
-
-func (c *Crawph) GetShouldTerminate() bool {
-
-	c.shouldTerminateMu.RLock()
-	defer c.shouldTerminateMu.RUnlock()
-
-	return c.shouldTerminate
-}
-
 func (c *Crawph) Start(urls []string) {
 
 	for _, url := range urls {
 		fmt.Println("Aggiunge in coda ", url)
-		c.queue.Enqueue(url)
+		c.queue.Enqueue(queue.Item{URL: url, Depth: 0})
 	}
 
 	for i := 0; i < c.maxWorkers; i++ {
@@ -104,11 +85,7 @@ func (c *Crawph) worker(id int) {
 
 		c.IncreaseActiveWorkers()
 
-		shouldTerminate := c.GetShouldTerminate()
-
-		fmt.Printf("[Worker %d] Terminazione: %s \n", id, shouldTerminate)
-
-		url, ok := c.queue.Dequeue(&shouldTerminate)
+		item, ok := c.queue.Dequeue()
 
 		c.DecreaseActiveWorkers()
 
@@ -117,8 +94,8 @@ func (c *Crawph) worker(id int) {
 			return
 		}
 
-		fmt.Printf("[Worker %d] Ho recuperato l'url: %s \n", id, url)
-		c.Crawling(url)
+		fmt.Printf("[Worker %d] Ho recuperato l'url: %s \n", id, item.URL)
+		c.Crawling(item.URL)
 	}
 }
 
@@ -148,7 +125,7 @@ func (c *Crawph) Crawling(url string) {
 
 	for _, link := range links {
 
-		c.queue.Enqueue(link)
+		c.queue.Enqueue(queue.Item{URL: link, Depth: 0})
 
 		fmt.Println("Link scoperto da mettere in coda: ", link)
 
@@ -168,8 +145,7 @@ func (c *Crawph) monitorWorkers() {
 		time.Sleep(100 * time.Millisecond)
 
 		if c.HasActiveWorkers() && c.queue.IsEmpty() {
-			c.SetShouldTerminate(true)
-			c.queue.BroadcastTermination()
+			c.queue.Terminate()
 			fmt.Println("Terminazione dell'esecuzione.")
 			return
 		}
