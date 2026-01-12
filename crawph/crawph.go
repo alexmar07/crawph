@@ -101,13 +101,17 @@ func (c *Crawph) worker(id int) {
 
 func (c *Crawph) Crawling(url string) {
 
-	startVertex := c.graph.AddVertex(url)
+	startVertex, err := c.graph.AddVertex(url)
+	if err != nil {
+		fmt.Println("Error adding vertex: ", err)
+		return
+	}
 
 	fmt.Println("Vertice iniziale ", startVertex.FullUrl)
 
 	scraper := scraper.NewScraper(url)
 
-	_, err := scraper.StartDiscovered()
+	_, err = scraper.StartDiscovered()
 
 	if err != nil {
 		fmt.Println(err)
@@ -129,7 +133,10 @@ func (c *Crawph) Crawling(url string) {
 
 		fmt.Println("Link scoperto da mettere in coda: ", link)
 
-		newVertex := c.graph.AddVertex(link)
+		newVertex, err := c.graph.AddVertex(link)
+		if err != nil {
+			continue
+		}
 
 		c.graph.AddEdge(startVertex, newVertex)
 
