@@ -11,9 +11,12 @@ type Storage interface {
 	Load() (*Graph, error)
 }
 
-func NewStorage(path string) Storage {
-	return &JsonStorage{
-		filename: path,
+func NewStorage(path string, format string) Storage {
+	switch format {
+	case "binary":
+		return &BinaryStorage{filename: path}
+	default:
+		return &JsonStorage{filename: path}
 	}
 }
 
@@ -23,36 +26,26 @@ type BinaryStorage struct {
 
 func (bs *BinaryStorage) Save(g *Graph) error {
 	file, err := os.Create(bs.filename)
-
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
-
 	encoder := gob.NewEncoder(file)
-
 	return encoder.Encode(g)
 }
 
 func (bs *BinaryStorage) Load() (*Graph, error) {
 	file, err := os.Open(bs.filename)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer file.Close()
-
-	var graph Graph
-
+	var g Graph
 	decoder := gob.NewDecoder(file)
-
-	if err := decoder.Decode(&graph); err != nil {
+	if err := decoder.Decode(&g); err != nil {
 		return nil, err
 	}
-
-	return &graph, nil
+	return &g, nil
 }
 
 type JsonStorage struct {
@@ -60,38 +53,25 @@ type JsonStorage struct {
 }
 
 func (js *JsonStorage) Save(g *Graph) error {
-
 	file, err := os.Create(js.filename)
-
 	if err != nil {
 		return err
 	}
-
 	defer file.Close()
-
 	encoder := json.NewEncoder(file)
-
 	return encoder.Encode(g)
 }
 
 func (js *JsonStorage) Load() (*Graph, error) {
-
-	file, err := os.Create(js.filename)
-
+	file, err := os.Open(js.filename)
 	if err != nil {
 		return nil, err
 	}
-
 	defer file.Close()
-
+	var g Graph
 	decoder := json.NewDecoder(file)
-
-	var graph Graph
-
-	if err := decoder.Decode(&graph); err != nil {
+	if err := decoder.Decode(&g); err != nil {
 		return nil, err
 	}
-
-	return &graph, nil
-
+	return &g, nil
 }
