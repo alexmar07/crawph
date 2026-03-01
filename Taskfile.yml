@@ -20,27 +20,16 @@ tasks:
       CGO_ENABLED: 0
       GOOS: linux
 
-  build-docker:
-    desc: "Build a docker image"
-    cmds:
-      - docker build -t crawph -f Dockerfile .
-
   test:
     deps:
       - install-deps
     desc: "Run tests"
     cmds:
-      - go test -v ./...
+      - go test -v -race ./...
 
   clean:
     desc: "Clean up"
     prompt: This is a dangerous command... Do you want to continue?
     cmds:
-      - rm -f bin/*
-      - rm -f data/*
-
-  run-docker:
-    desc: "Run the docker image"
-    deps: [build-docker]
-    cmds:
-      - docker run -d -p 8080:8080 crawph
+      - rm -rf bin/
+      - rm -rf data/
