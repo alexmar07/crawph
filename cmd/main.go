@@ -73,14 +73,15 @@ func main() {
 	}
 
 	crawler := crawph.New(crawph.Options{
-		MaxWorkers:    cfg.Crawl.MaxWorkers,
-		MaxDepth:      cfg.Crawl.MaxDepth,
-		Timeout:       cfg.Crawl.Timeout,
-		UserAgent:     cfg.Crawl.UserAgent,
-		DefaultRPS:    cfg.RateLimit.DefaultRPS,
-		RobotsChecker: robotsChecker,
-		Extractors:    []extractor.Extractor{&extractor.LinkExtractor{}},
-		Logger:        logger,
+		MaxWorkers:        cfg.Crawl.MaxWorkers,
+		MaxDepth:          cfg.Crawl.MaxDepth,
+		Timeout:           cfg.Crawl.Timeout,
+		UserAgent:         cfg.Crawl.UserAgent,
+		DefaultRPS:        cfg.RateLimit.DefaultRPS,
+		RespectCrawlDelay: cfg.RateLimit.RespectCrawlDelay,
+		RobotsChecker:     robotsChecker,
+		Extractors:        []extractor.Extractor{&extractor.LinkExtractor{}},
+		Logger:            logger,
 	})
 
 	logger.Info("crawph starting",

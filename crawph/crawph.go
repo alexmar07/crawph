@@ -15,30 +15,32 @@ import (
 )
 
 type Crawph struct {
-	maxWorkers    int
-	maxDepth      int
-	graph         *graph.Graph
-	queue         *queue.Queue
-	fetcher       *fetcher.Fetcher
-	extractors    []extractor.Extractor
-	robotsChecker robots.RobotsChecker
-	rateLimiter   *ratelimit.Registry
-	visited       sync.Map
-	activeWorkers int
-	activeMu      sync.Mutex
-	wg            sync.WaitGroup
-	logger        *slog.Logger
+	maxWorkers        int
+	maxDepth          int
+	respectCrawlDelay bool
+	graph             *graph.Graph
+	queue             *queue.Queue
+	fetcher           *fetcher.Fetcher
+	extractors        []extractor.Extractor
+	robotsChecker     robots.RobotsChecker
+	rateLimiter       *ratelimit.Registry
+	visited           sync.Map
+	activeWorkers     int
+	activeMu          sync.Mutex
+	wg                sync.WaitGroup
+	logger            *slog.Logger
 }
 
 type Options struct {
-	MaxWorkers    int
-	MaxDepth      int
-	Timeout       time.Duration
-	UserAgent     string
-	DefaultRPS    float64
-	RobotsChecker robots.RobotsChecker
-	Extractors    []extractor.Extractor
-	Logger        *slog.Logger
+	MaxWorkers        int
+	MaxDepth          int
+	Timeout           time.Duration
+	UserAgent         string
+	DefaultRPS        float64
+	RespectCrawlDelay bool
+	RobotsChecker     robots.RobotsChecker
+	Extractors        []extractor.Extractor
+	Logger            *slog.Logger
 }
 
 func New(opts Options) *Crawph {
@@ -53,8 +55,9 @@ func New(opts Options) *Crawph {
 	}
 
 	return &Crawph{
-		maxWorkers:    opts.MaxWorkers,
-		maxDepth:      opts.MaxDepth,
+		maxWorkers:        opts.MaxWorkers,
+		maxDepth:          opts.MaxDepth,
+		respectCrawlDelay: opts.RespectCrawlDelay,
 		graph:         graph.NewGraph(),
 		queue:         queue.NewQueue(),
 		fetcher:       fetcher.New(opts.Timeout, opts.UserAgent, 10),
@@ -89,7 +92,7 @@ func (c *Crawph) Start(seeds []string) {
 	go c.monitorWorkers()
 
 	c.wg.Wait()
-	c.logger.Info("crawl completed", "vertices", len(c.graph.Vertices))
+	c.logger.Info("crawl completed", "vertices", c.graph.VertexCount())
 }
 
 func (c *Crawph) worker(id int) {
@@ -126,16 +129,13 @@ func (c *Crawph) processURL(item queue.Item) {
 		return
 	}
 
-	// Apply crawl-delay if available
+	// Rate limit (apply crawl-delay override if configured)
+	domain := extractDomain(item.URL)
 	crawlDelay := c.robotsChecker.GetCrawlDelay(item.URL)
-	if crawlDelay > 0 {
-		domain := extractDomain(item.URL)
+	if c.respectCrawlDelay && crawlDelay > 0 {
 		rps := 1.0 / crawlDelay.Seconds()
 		c.rateLimiter.SetDomainRate(domain, rps)
 	}
-
-	// Rate limit
-	domain := extractDomain(item.URL)
 	c.rateLimiter.GetLimiter(domain).Wait()
 
 	// Fetch
@@ -145,8 +145,8 @@ func (c *Crawph) processURL(item queue.Item) {
 		return
 	}
 
-	// Add source vertex
-	sourceVertex, err := c.graph.AddVertex(item.URL)
+	// Add source vertex (item.URL is already normalized)
+	sourceVertex, err := c.graph.AddVertexNormalized(item.URL)
 	if err != nil {
 		c.logger.Error("add vertex failed", "url", item.URL, "error", err)
 		return
@@ -167,7 +167,7 @@ func (c *Crawph) processURL(item queue.Item) {
 				continue
 			}
 
-			targetVertex, err := c.graph.AddVertex(normalized)
+			targetVertex, err := c.graph.AddVertexNormalized(normalized)
 			if err != nil {
 				continue
 			}

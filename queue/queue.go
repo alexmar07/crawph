@@ -43,7 +43,16 @@ func (q *Queue) Dequeue() (Item, bool) {
 	}
 
 	item := q.items[0]
+	q.items[0] = Item{} // clear reference for GC
 	q.items = q.items[1:]
+
+	// Compact to reclaim memory when most items have been dequeued
+	if cap(q.items) > 256 && len(q.items) < cap(q.items)/4 {
+		compacted := make([]Item, len(q.items))
+		copy(compacted, q.items)
+		q.items = compacted
+	}
+
 	return item, true
 }
 

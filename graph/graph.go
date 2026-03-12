@@ -3,7 +3,6 @@ package graph
 import (
 	"fmt"
 	"net/url"
-	"sort"
 	"strings"
 	"sync"
 )
@@ -54,19 +53,7 @@ func NormalizeURL(rawURL string) (string, error) {
 		parsed.Path = strings.TrimRight(parsed.Path, "/")
 	}
 	if parsed.RawQuery != "" {
-		params := parsed.Query()
-		keys := make([]string, 0, len(params))
-		for k := range params {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		sorted := url.Values{}
-		for _, k := range keys {
-			for _, v := range params[k] {
-				sorted.Add(k, v)
-			}
-		}
-		parsed.RawQuery = sorted.Encode()
+		parsed.RawQuery = parsed.Query().Encode()
 	}
 	return parsed.String(), nil
 }
@@ -90,6 +77,29 @@ func (g *Graph) AddVertex(rawURL string) (*Vertex, error) {
 	g.VertexFullUrlIndex[normalized] = v
 	g.VertexBaseUrlIndex[baseUrl] = append(g.VertexBaseUrlIndex[baseUrl], v)
 	return v, nil
+}
+
+// AddVertexNormalized is like AddVertex but skips normalization.
+// Use when the URL has already been normalized via NormalizeURL.
+func (g *Graph) AddVertexNormalized(normalized string) (*Vertex, error) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if existing, ok := g.VertexFullUrlIndex[normalized]; ok {
+		return existing, nil
+	}
+	parsed, _ := url.Parse(normalized)
+	baseUrl := parsed.Scheme + "://" + parsed.Host
+	v := NewVertex(baseUrl, normalized)
+	g.Vertices = append(g.Vertices, v)
+	g.VertexFullUrlIndex[normalized] = v
+	g.VertexBaseUrlIndex[baseUrl] = append(g.VertexBaseUrlIndex[baseUrl], v)
+	return v, nil
+}
+
+func (g *Graph) VertexCount() int {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	return len(g.Vertices)
 }
 
 func (g *Graph) SearchVertexByFullUrl(fullUrl string) *Vertex {

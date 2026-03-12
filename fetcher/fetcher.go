@@ -2,6 +2,7 @@ package fetcher
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -45,7 +46,9 @@ func (f *Fetcher) Fetch(rawURL string) (*html.Node, error) {
 		return nil, fmt.Errorf("fetching %s: status %d", rawURL, resp.StatusCode)
 	}
 
-	node, err := html.Parse(resp.Body)
+	// Limit body to 10MB to prevent memory exhaustion on large responses
+	const maxBodySize = 10 << 20
+	node, err := html.Parse(io.LimitReader(resp.Body, maxBodySize))
 	if err != nil {
 		return nil, fmt.Errorf("parsing HTML from %s: %w", rawURL, err)
 	}
