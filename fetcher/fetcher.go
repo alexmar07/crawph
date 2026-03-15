@@ -40,7 +40,7 @@ func (f *Fetcher) Fetch(rawURL string) (*html.Node, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetching %s: %w", rawURL, err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return nil, fmt.Errorf("fetching %s: status %d", rawURL, resp.StatusCode)

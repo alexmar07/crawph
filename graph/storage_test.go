@@ -30,12 +30,16 @@ func TestJsonStorageLoadPreservesExistingFile(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.json")
 	g := NewGraph()
-	g.AddVertex("https://example.com")
+	_, _ = g.AddVertex("https://example.com")
 	storage := &JsonStorage{filename: path}
-	storage.Save(g)
+	if err := storage.Save(g); err != nil {
+		t.Fatalf("Save failed: %v", err)
+	}
 	info, _ := os.Stat(path)
 	sizeBefore := info.Size()
-	storage.Load()
+	if _, err := storage.Load(); err != nil {
+		t.Fatalf("Load failed: %v", err)
+	}
 	info, _ = os.Stat(path)
 	sizeAfter := info.Size()
 	if sizeAfter != sizeBefore {
@@ -47,7 +51,7 @@ func TestBinaryStorageSaveAndLoad(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test.gob")
 	g := NewGraph()
-	g.AddVertex("https://example.com/a")
+	_, _ = g.AddVertex("https://example.com/a")
 	storage := &BinaryStorage{filename: path}
 	if err := storage.Save(g); err != nil {
 		t.Fatalf("Save failed: %v", err)

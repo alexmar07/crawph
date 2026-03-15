@@ -12,7 +12,7 @@ type Limiter struct {
 }
 
 func (l *Limiter) Wait() {
-	l.limiter.Wait(context.Background())
+	_ = l.limiter.Wait(context.Background())
 }
 
 type Registry struct {

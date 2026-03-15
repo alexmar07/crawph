@@ -36,7 +36,7 @@ func TestFetchSetsUserAgent(t *testing.T) {
 	}))
 	defer server.Close()
 	f := New(30*time.Second, "TestBot/1.0", 10)
-	f.Fetch(server.URL)
+	_, _ = f.Fetch(server.URL)
 	if receivedUA != "TestBot/1.0" {
 		t.Errorf("expected User-Agent TestBot/1.0, got %s", receivedUA)
 	}

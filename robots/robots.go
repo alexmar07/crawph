@@ -82,7 +82,7 @@ func (c *Checker) getRobots(origin string) (*robotstxt.RobotsData, error) {
 		c.mu.Unlock()
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	var robots *robotstxt.RobotsData
 	if resp.StatusCode != http.StatusOK {

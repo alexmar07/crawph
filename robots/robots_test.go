@@ -53,9 +53,9 @@ func TestCachesRobotsTxt(t *testing.T) {
 	}))
 	defer server.Close()
 	checker := NewChecker("Crawph/1.0", 10*time.Second)
-	checker.IsAllowed(server.URL + "/page1")
-	checker.IsAllowed(server.URL + "/page2")
-	checker.IsAllowed(server.URL + "/page3")
+	_, _ = checker.IsAllowed(server.URL + "/page1")
+	_, _ = checker.IsAllowed(server.URL + "/page2")
+	_, _ = checker.IsAllowed(server.URL + "/page3")
 	if fetchCount != 1 {
 		t.Errorf("expected 1 robots.txt fetch, got %d", fetchCount)
 	}
@@ -70,7 +70,7 @@ func TestGetCrawlDelay(t *testing.T) {
 	}))
 	defer server.Close()
 	checker := NewChecker("Crawph/1.0", 10*time.Second)
-	checker.IsAllowed(server.URL + "/page")
+	_, _ = checker.IsAllowed(server.URL + "/page")
 	delay := checker.GetCrawlDelay(server.URL)
 	if delay != 5*time.Second {
 		t.Errorf("expected crawl-delay 5s, got %v", delay)
@@ -86,7 +86,7 @@ func TestGetCrawlDelayNone(t *testing.T) {
 	}))
 	defer server.Close()
 	checker := NewChecker("Crawph/1.0", 10*time.Second)
-	checker.IsAllowed(server.URL + "/page")
+	_, _ = checker.IsAllowed(server.URL + "/page")
 	delay := checker.GetCrawlDelay(server.URL)
 	if delay != 0 {
 		t.Errorf("expected crawl-delay 0, got %v", delay)

@@ -56,7 +56,9 @@ storage:
   format: binary
   output: out/data
 `
-	os.WriteFile(path, []byte(yaml), 0644)
+	if err := os.WriteFile(path, []byte(yaml), 0644); err != nil {
+		t.Fatalf("failed to write config file: %v", err)
+	}
 	cfg, err := LoadFromFile(path)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)

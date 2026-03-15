@@ -80,9 +80,9 @@ func TestAddEdgeDeduplication(t *testing.T) {
 
 func TestSearchVertexByBaseUrl(t *testing.T) {
 	g := NewGraph()
-	g.AddVertex("https://example.com/a")
-	g.AddVertex("https://example.com/b")
-	g.AddVertex("https://other.com/c")
+	_, _ = g.AddVertex("https://example.com/a")
+	_, _ = g.AddVertex("https://example.com/b")
+	_, _ = g.AddVertex("https://other.com/c")
 	results := g.SearchVertexByBaseUrl("https://example.com")
 	if len(results) != 2 {
 		t.Errorf("expected 2 vertices for example.com, got %d", len(results))
@@ -96,7 +96,7 @@ func TestConcurrentAddVertex(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			g.AddVertex("https://example.com/same")
+			_, _ = g.AddVertex("https://example.com/same")
 		}()
 	}
 	wg.Wait()
