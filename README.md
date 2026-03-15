@@ -1,16 +1,28 @@
 # Crawph
 
-A concurrent web crawler written in Go that discovers and maps website link structures.
+A concurrent web crawler written in Go that builds a **directed graph** of website link structures. Each crawled page becomes a vertex, and every hyperlink becomes an edge, producing a full map of how pages connect to each other.
+
+## How it works
+
+Crawph models a website as a directed graph:
+
+- **Vertices** represent discovered URLs, indexed by full URL and by domain
+- **Edges** represent hyperlinks between pages
+- The graph is **thread-safe** — concurrent workers add vertices and edges without races
+- URL normalization ensures each page appears as a single vertex, avoiding duplicates
+
+The output graph can be serialized to **JSON** (for inspection and tooling) or **binary** (gob, for compact storage and fast reload).
 
 ## Features
 
-- Concurrent crawling with configurable worker pool
-- Pipeline architecture (fetch -> extract -> store)
+- Directed graph construction with concurrent-safe vertex/edge insertion
+- Dual indexing (full URL + domain) for fast lookups
+- Pipeline architecture (fetch → extract → store)
 - robots.txt compliance with Crawl-delay support
 - Per-domain rate limiting
 - URL normalization and deduplication
-- Configurable crawl depth
-- JSON and binary output formats
+- Configurable crawl depth and worker pool
+- JSON and binary graph serialization
 - YAML configuration file support
 
 ## Installation
