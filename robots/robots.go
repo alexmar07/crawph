@@ -53,7 +53,7 @@ func (c *Checker) GetCrawlDelay(rawURL string) time.Duration {
 	c.mu.Lock()
 	robots, ok := c.cache[origin]
 	c.mu.Unlock()
-	if !ok {
+	if !ok || robots == nil {
 		return 0
 	}
 	group := robots.FindGroup(c.userAgent)

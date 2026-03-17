@@ -4,6 +4,7 @@ import (
 	"log/slog"
 	"net/url"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/alexmar07/crawler-go/extractor"
@@ -24,11 +25,10 @@ type Crawph struct {
 	extractors        []extractor.Extractor
 	robotsChecker     robots.RobotsChecker
 	rateLimiter       *ratelimit.Registry
-	visited           sync.Map
-	activeWorkers     int
-	activeMu          sync.Mutex
-	wg                sync.WaitGroup
-	logger            *slog.Logger
+	visited sync.Map
+	pending atomic.Int64
+	wg      sync.WaitGroup
+	logger  *slog.Logger
 }
 
 type Options struct {
@@ -80,16 +80,20 @@ func (c *Crawph) Start(seeds []string) {
 			continue
 		}
 		c.visited.Store(normalized, true)
+		c.pending.Add(1)
 		c.queue.Enqueue(queue.Item{URL: normalized, Depth: 0})
 		c.logger.Info("seed enqueued", "url", normalized)
+	}
+
+	if c.pending.Load() == 0 {
+		c.logger.Warn("no valid seeds, nothing to crawl")
+		return
 	}
 
 	for i := 0; i < c.maxWorkers; i++ {
 		c.wg.Add(1)
 		go c.worker(i)
 	}
-
-	go c.monitorWorkers()
 
 	c.wg.Wait()
 	c.logger.Info("crawl completed", "vertices", c.graph.VertexCount())
@@ -105,16 +109,15 @@ func (c *Crawph) worker(id int) {
 			return
 		}
 
-		c.incActive()
-
-		if item.Depth > c.maxDepth {
+		if item.Depth <= c.maxDepth {
+			c.processURL(item)
+		} else {
 			c.logger.Debug("max depth reached", "url", item.URL, "depth", item.Depth)
-			c.decActive()
-			continue
 		}
 
-		c.processURL(item)
-		c.decActive()
+		if c.pending.Add(-1) == 0 {
+			c.queue.Terminate()
+		}
 	}
 }
 
@@ -174,39 +177,11 @@ func (c *Crawph) processURL(item queue.Item) {
 			c.graph.AddEdge(sourceVertex, targetVertex)
 
 			if _, loaded := c.visited.LoadOrStore(normalized, true); !loaded {
+				c.pending.Add(1)
 				c.queue.Enqueue(queue.Item{URL: normalized, Depth: item.Depth + 1})
 			}
 		}
 	}
-}
-
-func (c *Crawph) monitorWorkers() {
-	for {
-		time.Sleep(100 * time.Millisecond)
-		if c.getActive() == 0 && c.queue.IsEmpty() {
-			c.queue.Terminate()
-			c.logger.Debug("termination signal sent")
-			return
-		}
-	}
-}
-
-func (c *Crawph) incActive() {
-	c.activeMu.Lock()
-	c.activeWorkers++
-	c.activeMu.Unlock()
-}
-
-func (c *Crawph) decActive() {
-	c.activeMu.Lock()
-	c.activeWorkers--
-	c.activeMu.Unlock()
-}
-
-func (c *Crawph) getActive() int {
-	c.activeMu.Lock()
-	defer c.activeMu.Unlock()
-	return c.activeWorkers
 }
 
 func extractDomain(rawURL string) string {
